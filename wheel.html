@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wheel of Names (with List Management)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .wheel-container, .wheel-pointer {
+            user-select: none;
+        }
+        #wheel {
+            transition: transform 5s cubic-bezier(0.25, 1, 0.5, 1);
+        }
+        textarea::-webkit-scrollbar {
+            display: none;
+        }
+        textarea {
+            -ms-overflow-style: none;
+            scrollbar-width: none; 
+        }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-800 flex flex-col min-h-screen">
+
+    <!-- Header -->
+    <header class="bg-white shadow-md w-full">
+        <div class="max-w-7xl mx-auto py-4 px-4 sm:px-6 lg:px-8">
+            <h1 class="text-2xl font-bold text-slate-800">Wheel of Names</h1>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-grow container mx-auto p-4 md:p-8">
+        <div class="grid grid-cols-1 md:grid-cols-5 gap-8">
+
+            <!-- Left Column: Wheel -->
+            <div class="md:col-span-3 flex justify-center items-start">
+                <div class="relative w-full max-w-[500px] aspect-square">
+                    <div class="wheel-pointer absolute top-[-15px] left-1/2 -translate-x-1/2 z-10" style="width: 0; height: 0; border-left: 20px solid transparent; border-right: 20px solid transparent; border-top: 30px solid #ef4444;"></div>
+                    <div id="wheel-container" class="wheel-container w-full h-full rounded-full shadow-xl cursor-pointer">
+                        <div id="wheel" class="w-full h-full"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column: Controls -->
+            <div class="md:col-span-2 bg-white p-6 rounded-lg shadow-md flex flex-col space-y-4">
+                
+                <!-- List Management Section -->
+                <div class="border-b border-slate-200 pb-4 space-y-4">
+                    <h2 class="text-xl font-semibold">Manage Lists</h2>
+                    <div class="space-y-2">
+                        <label for="saved-lists-dropdown" class="text-sm font-medium text-slate-700">Select a saved list:</label>
+                        <div class="flex gap-2">
+                            <select id="saved-lists-dropdown" class="w-full p-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500"></select>
+                            <button id="delete-list-button" class="bg-red-500 text-white p-2 rounded-lg hover:bg-red-600 active:scale-95 transition-all disabled:bg-slate-400" title="Delete selected list">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="space-y-2">
+                        <label for="list-name-input" class="text-sm font-medium text-slate-700">Save or update list:</label>
+                        <div class="flex gap-2">
+                            <input type="text" id="list-name-input" class="w-full p-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500" placeholder="Enter list name...">
+                            <button id="save-list-button" class="bg-green-500 text-white font-semibold px-4 rounded-lg hover:bg-green-600 active:scale-95 transition-all">Save</button>
+                        </div>
+                    </div>
+                </div>
+
+                <h2 class="text-xl font-semibold pt-2">Entries on the Wheel</h2>
+                <p class="text-sm text-slate-500">Enter 1 name per line</p>
+                <textarea id="entries" class="w-full h-48 p-3 border border-slate-300 rounded-md resize-none focus:ring-2 focus:ring-blue-500 transition" placeholder="Enter names here..."></textarea>
+                
+                <div class="flex-grow overflow-y-auto">
+                    <h3 class="font-semibold mb-2">Total Entries: <span id="entry-count">0</span></h3>
+                    <ul id="entry-list" class="space-y-2 text-sm"></ul>
+                </div>
+
+                <button id="spin-button" class="w-full bg-blue-500 text-white font-bold py-3 px-4 rounded-lg shadow-md hover:bg-blue-600 active:scale-95 transition-all duration-150 disabled:bg-slate-400 disabled:cursor-not-allowed disabled:scale-100">
+                    Spin!
+                </button>
+            </div>
+        </div>
+    </main>
+
+    <!-- Result Modal -->
+    <div id="modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 transition-opacity duration-300 opacity-0 pointer-events-none">
+        <div id="modal-content" class="bg-white rounded-lg shadow-2xl p-8 max-w-sm w-full text-center transform scale-95 transition-all duration-300">
+            <h2 class="text-2xl font-bold mb-2">Congratulations!</h2>
+            <p id="winner-text" class="text-4xl font-bold text-blue-600 my-6 break-words"></p>
+            <div class="flex flex-col sm:flex-row gap-3">
+                <button id="remove-winner-button" class="w-full bg-red-500 text-white font-semibold py-2 px-4 rounded-md hover:bg-red-600 transition">
+                    Remove Winner
+                </button>
+                <button id="close-modal-button" class="w-full bg-slate-200 text-slate-800 font-semibold py-2 px-4 rounded-md hover:bg-slate-300 transition">
+                    Close
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- DOM Elements ---
+        const wheel = document.getElementById('wheel');
+        const wheelContainer = document.getElementById('wheel-container');
+        const entriesTextarea = document.getElementById('entries');
+        const spinButton = document.getElementById('spin-button');
+        const modal = document.getElementById('modal');
+        const modalContent = document.getElementById('modal-content');
+        const winnerText = document.getElementById('winner-text');
+        const closeModalButton = document.getElementById('close-modal-button');
+        const removeWinnerButton = document.getElementById('remove-winner-button');
+        const entryList = document.getElementById('entry-list');
+        const entryCount = document.getElementById('entry-count');
+        const listNameInput = document.getElementById('list-name-input');
+        const saveListButton = document.getElementById('save-list-button');
+        const savedListsDropdown = document.getElementById('saved-lists-dropdown');
+        const deleteListButton = document.getElementById('delete-list-button');
+
+        // --- State ---
+        let entries = [];
+        let isSpinning = false;
+        let currentRotation = 0;
+        let winner = null;
+
+        // --- Wheel Colors ---
+        const wheelColors = [
+            '#60a5fa', '#34d399', '#facc15', '#a78bfa', '#f472b6',
+            '#fb923c', '#22d3ee', '#a3e635', '#f87171', '#c084fc',
+            '#fb7185', '#818cf8', '#4ade80', '#fde047', '#2dd4bf',
+            '#f97316', '#e879f9', '#67e8f9', '#d946ef', '#fca5a5'
+        ];
+
+        // --- LocalStorage Keys ---
+        const savedListsKey = 'wheelOfNamesSavedLists';
+        const lastActiveListKey = 'wheelOfNamesLastActiveList';
+
+        // --- Functions ---
+
+        function getSavedLists() {
+            return JSON.parse(localStorage.getItem(savedListsKey)) || {};
+        }
+
+        function saveLists(lists) {
+            localStorage.setItem(savedListsKey, JSON.stringify(lists));
+        }
+
+        function setLastActiveList(name) {
+            localStorage.setItem(lastActiveListKey, name);
+        }
+
+        function populateDropdown() {
+            const lists = getSavedLists();
+            const listNames = Object.keys(lists);
+            savedListsDropdown.innerHTML = '<option value="">-- Select or create new --</option>';
+            listNames.forEach(name => {
+                const option = document.createElement('option');
+                option.value = name;
+                option.textContent = name;
+                savedListsDropdown.appendChild(option);
+            });
+            deleteListButton.disabled = true;
+        }
+
+        function loadList(listName) {
+            const lists = getSavedLists();
+            if (lists[listName]) {
+                entriesTextarea.value = lists[listName];
+                listNameInput.value = listName;
+                updateDisplay();
+            }
+        }
+
+        function createSlicePath(startAngle, endAngle) {
+            const radius = 250, x = 250, y = 250;
+            const start = polarToCartesian(x, y, radius, endAngle);
+            const end = polarToCartesian(x, y, radius, startAngle);
+            const largeArcFlag = endAngle - startAngle <= 180 ? "0" : "1";
+            return `M ${x},${y} L ${start.x},${start.y} A ${radius},${radius} 0 ${largeArcFlag} 0 ${end.x},${end.y} Z`;
+        }
+
+        function polarToCartesian(centerX, centerY, radius, angleInDegrees) {
+            const angleInRadians = (angleInDegrees - 90) * Math.PI / 180.0;
+            return {
+                x: centerX + (radius * Math.cos(angleInRadians)),
+                y: centerY + (radius * Math.sin(angleInRadians))
+            };
+        }
+
+        function updateDisplay() {
+            const rawEntries = entriesTextarea.value.split('\n').filter(name => name.trim() !== '');
+            entries = [...new Set(rawEntries)];
+            updateWheel();
+            updateEntryList();
+            spinButton.disabled = entries.length < 2;
+        }
+
+        function updateWheel() {
+            wheel.innerHTML = '';
+            const numEntries = entries.length;
+            if (numEntries === 0) return;
+            const sliceAngle = 360 / numEntries;
+            const svgNS = "http://www.w3.org/2000/svg";
+            const svg = document.createElementNS(svgNS, "svg");
+            svg.setAttribute("viewBox", "0 0 500 500");
+            svg.setAttribute("class", "w-full h-full");
+            entries.forEach((entry, i) => {
+                const startAngle = i * sliceAngle;
+                const endAngle = (i + 1) * sliceAngle;
+                const color = wheelColors[i % wheelColors.length];
+                const path = document.createElementNS(svgNS, "path");
+                path.setAttribute("d", createSlicePath(startAngle, endAngle));
+                path.setAttribute("fill", color);
+                svg.appendChild(path);
+                const textAngle = startAngle + sliceAngle / 2;
+                const textPosition = polarToCartesian(250, 250, 180, textAngle);
+                const text = document.createElementNS(svgNS, "text");
+                text.setAttribute("x", textPosition.x);
+                text.setAttribute("y", textPosition.y);
+                text.setAttribute("dy", ".35em");
+                text.setAttribute("text-anchor", "middle");
+                text.setAttribute("transform", `rotate(${textAngle}, ${textPosition.x}, ${textPosition.y})`);
+                text.setAttribute("fill", "#1e293b");
+                text.setAttribute("font-size", numEntries > 15 ? "12" : "16");
+                text.setAttribute("font-weight", "500");
+                text.textContent = entry.length > 15 ? entry.substring(0, 14) + '...' : entry;
+                svg.appendChild(text);
+            });
+            wheel.appendChild(svg);
+        }
+        
+        function updateEntryList() {
+            entryList.innerHTML = '';
+            entryCount.textContent = entries.length;
+            if (entries.length === 0) {
+                 entryList.innerHTML = `<li class="text-slate-400">No entries yet...</li>`;
+                 return;
+            }
+            entries.forEach((entry, index) => {
+                const li = document.createElement('li');
+                li.className = 'flex justify-between items-center bg-slate-100 p-2 rounded-md';
+                const span = document.createElement('span');
+                span.textContent = entry;
+                span.className = 'truncate pr-2';
+                li.appendChild(span);
+                const deleteButton = document.createElement('button');
+                deleteButton.innerHTML = '&#x2715;';
+                deleteButton.className = 'text-red-500 hover:text-red-700 font-bold';
+                deleteButton.onclick = () => removeEntry(index);
+                li.appendChild(deleteButton);
+                entryList.appendChild(li);
+            });
+        }
+
+        function removeEntry(indexToRemove) {
+            entries.splice(indexToRemove, 1);
+            entriesTextarea.value = entries.join('\n');
+            updateDisplay();
+        }
+
+        function spin() {
+            if (isSpinning || entries.length < 2) return;
+            isSpinning = true;
+            spinButton.disabled = true;
+            wheelContainer.classList.remove('cursor-pointer');
+            const randomSpins = Math.floor(Math.random() * 5) + 5;
+            const targetIndex = Math.floor(Math.random() * entries.length);
+            const sliceAngle = 360 / entries.length;
+            const targetAngle = (targetIndex * sliceAngle) + (sliceAngle / 2);
+            
+            const rotationToAlign = 360 - targetAngle;
+            const newRotation = currentRotation - (currentRotation % 360) + (randomSpins * 360) + rotationToAlign;
+            
+            currentRotation = newRotation;
+
+            wheel.style.transform = `rotate(${currentRotation}deg)`;
+            winner = entries[targetIndex];
+        }
+        
+        function showModal() {
+            winnerText.textContent = winner;
+            modal.classList.remove('opacity-0', 'pointer-events-none');
+            modalContent.classList.remove('scale-95');
+        }
+
+        function hideModal() {
+            modal.classList.add('opacity-0', 'pointer-events-none');
+            modalContent.classList.add('scale-95');
+            isSpinning = false;
+            spinButton.disabled = entries.length < 2;
+            wheelContainer.classList.add('cursor-pointer');
+        }
+
+        // --- Event Listeners ---
+        saveListButton.addEventListener('click', () => {
+            const listName = listNameInput.value.trim();
+            if (!listName) {
+                alert('Please enter a list name before saving.');
+                return;
+            }
+            const lists = getSavedLists();
+            lists[listName] = entriesTextarea.value;
+            saveLists(lists);
+            populateDropdown();
+            savedListsDropdown.value = listName;
+            setLastActiveList(listName);
+            deleteListButton.disabled = false;
+            alert(`List "${listName}" saved successfully.`);
+        });
+
+        savedListsDropdown.addEventListener('change', () => {
+            const selectedList = savedListsDropdown.value;
+            if (selectedList) {
+                loadList(selectedList);
+                setLastActiveList(selectedList);
+                deleteListButton.disabled = false;
+            } else {
+                entriesTextarea.value = '';
+                listNameInput.value = '';
+                updateDisplay();
+                deleteListButton.disabled = true;
+            }
+        });
+
+        deleteListButton.addEventListener('click', () => {
+            const selectedList = savedListsDropdown.value;
+            if (!selectedList) return;
+            
+            if (confirm(`Are you sure you want to delete the list "${selectedList}"?`)) {
+                const lists = getSavedLists();
+                delete lists[selectedList];
+                saveLists(lists);
+                
+                if (localStorage.getItem(lastActiveListKey) === selectedList) {
+                    localStorage.removeItem(lastActiveListKey);
+                }
+
+                entriesTextarea.value = '';
+                listNameInput.value = '';
+                populateDropdown();
+                updateDisplay();
+            }
+        });
+
+        entriesTextarea.addEventListener('input', updateDisplay);
+        spinButton.addEventListener('click', spin);
+        wheelContainer.addEventListener('click', spin);
+        wheel.addEventListener('transitionend', () => { if(isSpinning) showModal(); });
+        closeModalButton.addEventListener('click', hideModal);
+        removeWinnerButton.addEventListener('click', () => {
+            const winnerIndex = entries.indexOf(winner);
+            if (winnerIndex > -1) removeEntry(winnerIndex);
+            hideModal();
+        });
+
+        // --- Initial Load ---
+        function initializeApp() {
+            populateDropdown();
+            const lastActiveList = localStorage.getItem(lastActiveListKey);
+            const lists = getSavedLists();
+
+            if (lastActiveList && lists[lastActiveList]) {
+                savedListsDropdown.value = lastActiveList;
+                loadList(lastActiveList);
+                deleteListButton.disabled = false;
+            } else if (Object.keys(lists).length > 0) {
+                const firstList = Object.keys(lists)[0];
+                savedListsDropdown.value = firstList;
+                loadList(firstList);
+                setLastActiveList(firstList);
+                deleteListButton.disabled = false;
+            } else {
+                entriesTextarea.value = "Item 1\nItem 2\nItem 3";
+                updateDisplay();
+            }
+        }
+
+        initializeApp();
+
+    </script>
+</body>
+</html>
